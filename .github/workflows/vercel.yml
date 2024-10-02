@@ -1,20 +1,44 @@
-name: deploy website
 on:
   push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+    paths:
+      - docs/**
+      - mkdocs.yml
+
+  workflow_dispatch:
+
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: ngduc/vercel-deploy-action@master
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+
+      # Install MkDocs, other dependencies, and do whatever else you need to do, then...
+
+      - name: Build
+        run: mkdocs build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
         with:
-          vercel-cli: vercel
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.ORG_ID}}
-          vercel-project-id: ${{ secrets.PROJECT_ID}}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: site
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: site
+          path: site
+
+      - name: Deploy to Vercel
+        uses: npx vercel --yes --cwd site --token ${{ secrets.VERCEL_TOKEN }} 
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
